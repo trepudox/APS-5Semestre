@@ -1,29 +1,53 @@
 package com.trepudox;
 
+import com.trepudox.logger.CustomLogger;
+import jdk.jshell.spi.ExecutionControl;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.util.Scanner;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class Client {
     // 1024 Bytes corresponde a uma mensagem de aproximadamente 1000 caracteres
 
+
+    private static final CustomLogger LOGGER = CustomLogger.getLogger();
+
     // Caso usar uma máquina diferente para o servidor, consultar o IP do mesmo e alterar essa variável
-    private static final String ADDRESS = "127.0.0.1";
+    private static final String ADDRESS = "192.168.0.104";
     private static final int PORT = 10000;
     private static final Scanner SCANNER = new Scanner(System.in);
 
     public static void main(String[] args) {
-        try(AsynchronousSocketChannel client = AsynchronousSocketChannel.open()) {
+        try {
             String identificacao = "";
             String mensagem = "";
 
-            client.connect(new InetSocketAddress(InetAddress.getLocalHost(), PORT));
+            LOGGER.info("Tentando se conectar ao servidor");
+            AsynchronousSocketChannel client = AsynchronousSocketChannel.open();
+            for(int i = 0; i < 12; i++) {
+                LOGGER.info("PORT: %s", PORT + i);
+                Future<Void> connection = client.connect(new InetSocketAddress(ADDRESS, PORT + i));
+                try {
+                    connection.get(1, TimeUnit.SECONDS);
+                    break;
+                } catch(TimeoutException | ExecutionException e) {
+                    client = AsynchronousSocketChannel.open();
+                }
+            }
+
+            if(client.getRemoteAddress() == null) {
+                throw new RuntimeException("Não conectado");
+            }
+            LOGGER.info("Conectado com sucesso no servidor %s", client.getRemoteAddress());
 
             while(!identificacao.equals("0") && !mensagem.equals("0")) {
-
                 System.out.print("Digite sua identificação: ");
                 identificacao = SCANNER.nextLine();
 
@@ -49,6 +73,9 @@ public class Client {
                 readBuffer.clear();
                 System.out.println();
             }
+        } catch(ExecutionException e) {
+            System.out.println("Tempo de espera excedido");
+            e.printStackTrace();
         } catch(Exception e) {
             System.out.println("Erro: " + e.getMessage());
             e.printStackTrace();
