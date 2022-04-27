@@ -36,7 +36,12 @@ public class Client {
                 Future<Void> connection = client.connect(new InetSocketAddress(ADDRESS, PORT + i));
                 try {
                     connection.get(1, TimeUnit.SECONDS);
-                    break;
+                    ByteBuffer connectionReadBuffer = ByteBuffer.allocate(256);
+                    client.read(connectionReadBuffer);
+                    String s = new String(connectionReadBuffer.array());
+                    if(s.equals("OK")) {
+                        break;
+                    }
                 } catch(TimeoutException | ExecutionException e) {
                     client = AsynchronousSocketChannel.open();
                 }
