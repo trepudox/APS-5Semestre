@@ -1,23 +1,40 @@
 package com.trepudox;
 
 import com.trepudox.logger.CustomLogger;
-import com.trepudox.worker.WorkerThread;
+import com.trepudox.thread.WorkerThread;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.channels.AsynchronousServerSocketChannel;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public class Server {
 
     private static final CustomLogger LOGGER = CustomLogger.getLogger();
-    private static final int AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors();
 
     public static void main(String[] args) {
-        LOGGER.info("De acordo com a potência da máquina local, o Server terá um total de %s threads disponíveis.", AVAILABLE_PROCESSORS);
+        try(AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open()
+                .bind(new InetSocketAddress(InetAddress.getLocalHost(), 10000));) {
+            LOGGER.info("Servidor disponível no endereço: " + server.getLocalAddress().toString());
 
-        ExecutorService executorService = Executors.newFixedThreadPool(AVAILABLE_PROCESSORS);
-        for(int i = 0; i < AVAILABLE_PROCESSORS; i++) {
-            executorService.execute(new WorkerThread(i));
+            while(server.isOpen()) {
+                Future<AsynchronousSocketChannel> connection = server.accept();
+                AsynchronousSocketChannel connectedClient = connection.get();
+                new WorkerThread(connectedClient).start();
+            }
+        } catch(IOException e) {
+            LOGGER.error("Houve um erro inesperado na criação do servidor");
+        } catch (ExecutionException e) {
+            LOGGER.error("Houve um erro inesperado na hora da conexão com um dos clientes");
+        } catch (InterruptedException e) {
+            LOGGER.error("Houve um erro inesperado na execução do servidor");
         }
+
+        // TODO: Remover printStackTrace após testes de exceção
+
     }
 
 }

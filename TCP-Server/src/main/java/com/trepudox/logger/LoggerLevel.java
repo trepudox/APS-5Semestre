@@ -3,7 +3,8 @@ package com.trepudox.logger;
 public enum LoggerLevel {
 
     INFO("Info"),
-    ERROR("Error");
+    ERROR("Error"),
+    MESSAGE("Message");
 
     private String label;
 

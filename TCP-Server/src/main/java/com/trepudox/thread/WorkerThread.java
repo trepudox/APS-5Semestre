@@ -1,44 +1,40 @@
-package com.trepudox.worker;
+package com.trepudox.thread;
 
 import com.trepudox.logger.CustomLogger;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 public class WorkerThread extends Thread {
 
-    private final int port;
     private final int threadNumber;
+    private final AsynchronousSocketChannel connectedClient;
 
+    private static int classThreadNumber;
     private static final CustomLogger LOGGER = CustomLogger.getLogger();
     private static final String DATE_TIME_PATTERN = "dd-MM-yyyy HH:mm:ss.SSSSSS";
 
-    public WorkerThread(int threadNumber) {
-        super("WorkerThread-" + threadNumber);
-        this.port = 10000 + threadNumber;
-        this.threadNumber = threadNumber;
+    public WorkerThread(AsynchronousSocketChannel connectedClient) {
+        super("WorkerThread-" + classThreadNumber);
+        this.threadNumber = classThreadNumber;
+        this.connectedClient = connectedClient;
+        WorkerThread.classThreadNumber++;
     }
 
     @Override
     public void run() {
-        try(AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open()
-                .bind(new InetSocketAddress(InetAddress.getLocalHost(), this.port))) {
-            LOGGER.info("SERVIDOR %d RODANDO NA PORTA %d", this.threadNumber, this.port);
-
-            while(server.isOpen()) {
-                Future<AsynchronousSocketChannel> connection = server.accept();
-                AsynchronousSocketChannel connectedClient = connection.get();
-                String connectedClientAddress = connectedClient.getRemoteAddress().toString();
-
+        try {
+            while(connectedClient.isOpen()) {
                 connectedClient.write(ByteBuffer.wrap("OK".getBytes()));
 
-                LOGGER.info("Cliente conectado no servidor %d: %s%n", this.threadNumber, connectedClientAddress);
+                String connectedClientAddress = connectedClient.getRemoteAddress().toString();
+                LOGGER.info("Cliente %s conectado no servidor - Endereço do cliente: %s%n", this.threadNumber, connectedClientAddress);
+
                 while(connectedClient.isOpen()) {
                     ByteBuffer readBuffer = ByteBuffer.allocate(1024);
                     Future<Integer> readValue = connectedClient.read(readBuffer);
@@ -55,7 +51,7 @@ public class WorkerThread extends Thread {
                     String receivedMessage = new String(readBuffer.array()).trim();
                     readBuffer.clear();
 
-                    LOGGER.info("[Client: %s] - %s%n", connectedClientAddress, receivedMessage);
+                    LOGGER.message("[Client-%d: %s] - %s%n", this.threadNumber, connectedClientAddress, receivedMessage);
 
                     LocalDateTime receivedMessageDateTime = LocalDateTime.now();
                     String formattedDateTime = receivedMessageDateTime.format(DateTimeFormatter.ofPattern(DATE_TIME_PATTERN));
@@ -66,8 +62,12 @@ public class WorkerThread extends Thread {
                     writeBuffer.clear();
                 }
 
-                System.out.println();
             }
+        } catch(ExecutionException e) {
+            LOGGER.error("O cliente %d foi desconectado do servidor", this.threadNumber);
+        } catch(IOException e) {
+            LOGGER.error("Houve um erro na saída/entrada de dados");
+            e.printStackTrace();
         } catch(Exception e) {
             LOGGER.error("Erro: " + e.getMessage());
             e.printStackTrace();
