@@ -20,18 +20,18 @@ public class Client {
     // Caso usar uma máquina diferente para o servidor, consultar o IP do mesmo e alterar essa variável
     private static final String ADDRESS = "192.168.0.104";
     private static final int PORT = 10000;
-    private static final int AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors();
 
     private static void connect(AsynchronousSocketChannel client) throws InterruptedException, IOException {
-        for(int i = 0; i < AVAILABLE_PROCESSORS; i++) {
-            LOGGER.info("Tentando se conectar no endereço /%s:%s", ADDRESS, PORT + i);
-            Future<Void> connection = client.connect(new InetSocketAddress(ADDRESS, PORT + i));
+        while(true) {
+            LOGGER.info("Tentando se conectar no endereço /%s:%s", ADDRESS, PORT);
+
+            Future<Void> connection = client.connect(new InetSocketAddress(ADDRESS, PORT));
             try {
-                connection.get(1, TimeUnit.SECONDS);
+                connection.get(5, TimeUnit.SECONDS);
 
                 ByteBuffer connectionReadBuffer = ByteBuffer.allocate(4);
                 Future<Integer> read = client.read(connectionReadBuffer);
-                read.get();
+                read.get(2, TimeUnit.SECONDS);
 
                 connectionReadBuffer.flip();
                 String s = new String(connectionReadBuffer.array()).trim();
@@ -44,22 +44,24 @@ public class Client {
 
             } catch (TimeoutException | ExecutionException e) {
                 client = AsynchronousSocketChannel.open();
+                e.printStackTrace();
+                // TODO: Analisar casos de erro e depois remover printStackTrace
             }
         }
 
         if(client.getRemoteAddress() == null) {
-            LOGGER.error("Todos servidores estão ocupados ou fora do ar, não foi possível se conectar.");
+            // TODO: Analisar necessidade
+            LOGGER.info("Analisar necessidade");
             client.close();
             System.exit(0);
         }
     }
 
     public static void main(String[] args) {
-        LOGGER.info("De acordo com a potência da máquina local, o Client buscrá um total de %s servidores", AVAILABLE_PROCESSORS);
-
         try {
             AsynchronousSocketChannel client = AsynchronousSocketChannel.open();
             connect(client);
+            pulaLinha();
 
             String identificacao;
             String mensagem;
@@ -79,14 +81,26 @@ public class Client {
 
                 if(readValue.get() == -1) {
                     System.out.println("Não foi possível ler a resposta do servidor.");
+                    client.close();
                     break;
                 }
 
-                System.out.println("Retorno: " + new String(readBuffer.array()).trim());
+                pulaLinha();
+                LOGGER.message("Retorno: %s", new String(readBuffer.array()).trim());
 
                 readBuffer.clear();
-                System.out.println();
-            } while(!identificacao.equals("0") && !mensagem.equals("0"));
+                pulaLinha();
+
+                System.out.print("Manter conexão ativa?\nDigite 0 para NÃO\nDigite 1 para SIM\nResposta: ");
+                String exit = SCANNER.nextLine();
+                pulaLinha();
+
+                if(exit.equals("0"))
+                    break;
+            } while(true);
+        } catch(IOException e) {
+            System.out.println("Servidor fechou");
+            e.printStackTrace();
         } catch(ExecutionException e) {
             System.out.println("Tempo de espera excedido");
             e.printStackTrace();
@@ -94,6 +108,11 @@ public class Client {
             System.out.println("Erro: " + e.getMessage());
             e.printStackTrace();
         }
+        // TODO: Verificar e estressar casos de exceção
+    }
+
+    private static void pulaLinha() {
+        System.out.println();
     }
 
 }
