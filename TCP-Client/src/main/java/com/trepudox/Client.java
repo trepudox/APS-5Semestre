@@ -21,7 +21,7 @@ public class Client {
     private static final String ADDRESS = "192.168.0.104";
     private static final int PORT = 10000;
 
-    private static void connect(AsynchronousSocketChannel client) throws InterruptedException, IOException {
+    private static void connect(AsynchronousSocketChannel client) throws IOException {
         while(true) {
             LOGGER.info("Tentando se conectar no endereço /%s:%s", ADDRESS, PORT);
 
@@ -42,19 +42,13 @@ public class Client {
                     break;
                 }
 
-            } catch (TimeoutException | ExecutionException e) {
+            } catch(TimeoutException | ExecutionException e) {
                 client = AsynchronousSocketChannel.open();
-                e.printStackTrace();
-                // TODO: Analisar casos de erro e depois remover printStackTrace
+            } catch(InterruptedException e) {
+                LOGGER.error("Houve um problema inesperado na hora de se conectar com o servidor");
             }
         }
 
-        if(client.getRemoteAddress() == null) {
-            // TODO: Analisar necessidade
-            LOGGER.info("Analisar necessidade");
-            client.close();
-            System.exit(0);
-        }
     }
 
     public static void main(String[] args) {
@@ -63,18 +57,15 @@ public class Client {
             connect(client);
             pulaLinha();
 
-            String identificacao;
-            String mensagem;
+            System.out.print("Digite sua identificação: ");
+            String identificacao = SCANNER.nextLine();
 
             do {
-                System.out.print("Digite sua identificação: ");
-                identificacao = SCANNER.nextLine();
-
                 System.out.print("Digite sua mensagem: ");
-                mensagem = SCANNER.nextLine();
+                String mensagem = SCANNER.nextLine();
 
-                String message = String.format("'%s': %s", identificacao, mensagem);
-                client.write(ByteBuffer.wrap(message.getBytes()));
+                String messageToWrite = String.format("'%s': %s", identificacao, mensagem);
+                client.write(ByteBuffer.wrap(messageToWrite.getBytes()));
 
                 ByteBuffer readBuffer = ByteBuffer.allocate(1024);
                 Future<Integer> readValue = client.read(readBuffer);
@@ -99,16 +90,14 @@ public class Client {
                     break;
             } while(true);
         } catch(IOException e) {
-            System.out.println("Servidor fechou");
-            e.printStackTrace();
+            System.out.println("Não foi possível estabelecer uma conexão com o servidor");
         } catch(ExecutionException e) {
             System.out.println("Tempo de espera excedido");
-            e.printStackTrace();
-        } catch(Exception e) {
-            System.out.println("Erro: " + e.getMessage());
-            e.printStackTrace();
+        } catch(InterruptedException e) {
+            System.out.println("Houve um erro inesperado em uma das comunicações com o servidor");
         }
-        // TODO: Verificar e estressar casos de exceção
+
+        System.out.println("Aplicação encerrada");
     }
 
     private static void pulaLinha() {
