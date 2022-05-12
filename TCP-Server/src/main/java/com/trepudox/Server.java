@@ -33,7 +33,7 @@ public class Server {
             LOGGER.error("Houve um erro inesperado na execução do servidor");
         }
 
-        // TODO: Remover printStackTrace após testes de exceção
+        System.out.println("Aplicação encerrada");
 
     }
 
