@@ -13,11 +13,12 @@ import java.util.concurrent.Future;
 
 public class Server {
 
+    private static final int PORT = 10000;
     private static final CustomLogger LOGGER = CustomLogger.getLogger();
 
     public static void main(String[] args) {
         try(AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open()
-                .bind(new InetSocketAddress(InetAddress.getLocalHost(), 10000));) {
+                .bind(new InetSocketAddress(InetAddress.getLocalHost(), PORT))) {
             LOGGER.info("Servidor disponível no endereço: " + server.getLocalAddress().toString());
 
             while(server.isOpen()) {
