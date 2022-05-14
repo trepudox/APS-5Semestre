@@ -21,10 +21,11 @@ public class Client {
     private static final String ADDRESS = "192.168.0.104";
     private static final int PORT = 10000;
 
-    private static void connect(AsynchronousSocketChannel client) throws IOException {
+    private static AsynchronousSocketChannel connect() throws IOException {
         while(true) {
             LOGGER.info("Tentando se conectar no endereço /%s:%s", ADDRESS, PORT);
 
+            AsynchronousSocketChannel client = AsynchronousSocketChannel.open();
             Future<Void> connection = client.connect(new InetSocketAddress(ADDRESS, PORT));
             try {
                 connection.get(5, TimeUnit.SECONDS);
@@ -39,22 +40,20 @@ public class Client {
 
                 if (s.equals("OK")) {
                     LOGGER.info("Conectado com sucesso no servidor %s", client.getRemoteAddress());
-                    break;
+                    return client;
                 }
 
             } catch(TimeoutException | ExecutionException e) {
-                client = AsynchronousSocketChannel.open();
+                client.close();
             } catch(InterruptedException e) {
                 LOGGER.error("Houve um problema inesperado na hora de se conectar com o servidor");
             }
         }
-
     }
 
     public static void main(String[] args) {
         try {
-            AsynchronousSocketChannel client = AsynchronousSocketChannel.open();
-            connect(client);
+            AsynchronousSocketChannel client = connect();
             pulaLinha();
 
             System.out.print("Digite sua identificação: ");
