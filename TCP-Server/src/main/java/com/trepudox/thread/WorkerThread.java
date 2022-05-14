@@ -69,8 +69,8 @@ public class WorkerThread extends Thread {
             LOGGER.error("Houve um erro na saída/entrada de dados");
             e.printStackTrace();
         } catch(Exception e) {
-            LOGGER.error("Erro: " + e.getMessage());
             e.printStackTrace();
+            LOGGER.error("Foi encontrado um erro crítico que não pôde ser identificado: " + e.getMessage());
         }
     }
 
