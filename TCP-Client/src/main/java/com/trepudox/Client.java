@@ -51,43 +51,64 @@ public class Client {
         }
     }
 
+    public static void writeMessage(AsynchronousSocketChannel client, String identificacao) {
+        System.out.print("Digite sua mensagem: ");
+        String mensagem = SCANNER.nextLine();
+
+        String messageToWrite = String.format("'%s': %s", identificacao, mensagem);
+        client.write(ByteBuffer.wrap(messageToWrite.getBytes()));
+    }
+
+    private static ByteBuffer readConfirmationMessage(AsynchronousSocketChannel client) throws ExecutionException, InterruptedException, IOException {
+        ByteBuffer readBuffer = ByteBuffer.allocate(1024);
+        Future<Integer> readValue = client.read(readBuffer);
+
+        if(readValue.get() == -1) {
+            String returnMsg = "Não foi possível ler a resposta do servidor.";
+            System.out.println(returnMsg);
+            client.close();
+            throw new IOException(returnMsg);
+        }
+
+        return readBuffer;
+    }
+
+    private static boolean quitConfirmation() {
+        System.out.print("Manter conexão ativa?\nDigite 0 para NÃO\nDigite 1 para SIM\nResposta: ");
+        String msg = SCANNER.next();
+        SCANNER.nextLine();
+        return msg.equals("0");
+    }
+
+    private static void printReceivedMessage(ByteBuffer readBuffer) {
+        pulaLinha();
+        LOGGER.message("Retorno: %s", new String(readBuffer.array()).trim());
+
+        readBuffer.clear();
+        pulaLinha();
+    }
+
     public static void main(String[] args) {
+        String identificacao;
+        boolean wantsToQuit;
+
         try {
             AsynchronousSocketChannel client = connect();
             pulaLinha();
 
             System.out.print("Digite sua identificação: ");
-            String identificacao = SCANNER.nextLine();
+            identificacao = SCANNER.nextLine();
 
             do {
-                System.out.print("Digite sua mensagem: ");
-                String mensagem = SCANNER.nextLine();
+                writeMessage(client, identificacao);
 
-                String messageToWrite = String.format("'%s': %s", identificacao, mensagem);
-                client.write(ByteBuffer.wrap(messageToWrite.getBytes()));
+                ByteBuffer readBuffer = readConfirmationMessage(client);
 
-                ByteBuffer readBuffer = ByteBuffer.allocate(1024);
-                Future<Integer> readValue = client.read(readBuffer);
+                printReceivedMessage(readBuffer);
 
-                if(readValue.get() == -1) {
-                    System.out.println("Não foi possível ler a resposta do servidor.");
-                    client.close();
-                    break;
-                }
-
+                wantsToQuit = quitConfirmation();
                 pulaLinha();
-                LOGGER.message("Retorno: %s", new String(readBuffer.array()).trim());
-
-                readBuffer.clear();
-                pulaLinha();
-
-                System.out.print("Manter conexão ativa?\nDigite 0 para NÃO\nDigite 1 para SIM\nResposta: ");
-                String exit = SCANNER.nextLine();
-                pulaLinha();
-
-                if(exit.equals("0"))
-                    break;
-            } while(true);
+            } while(!wantsToQuit);
         } catch(IOException e) {
             System.out.println("Não foi possível estabelecer uma conexão com o servidor");
         } catch(ExecutionException e) {
