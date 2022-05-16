@@ -65,7 +65,7 @@ public class Client {
 
         if(readValue.get() == -1) {
             String returnMsg = "Não foi possível ler a resposta do servidor.";
-            System.out.println(returnMsg);
+            LOGGER.error(returnMsg);
             client.close();
             throw new IOException(returnMsg);
         }
@@ -109,11 +109,11 @@ public class Client {
                 pulaLinha();
             } while(!wantsToQuit);
         } catch(IOException e) {
-            System.out.println("Não foi possível estabelecer uma conexão com o servidor");
+            LOGGER.error("Não foi possível estabelecer uma conexão com o servidor");
         } catch(ExecutionException e) {
-            System.out.println("Tempo de espera excedido");
+            LOGGER.error("Tempo de espera excedido");
         } catch(InterruptedException e) {
-            System.out.println("Houve um erro inesperado em uma das comunicações com o servidor");
+            LOGGER.error("Houve um erro inesperado em uma das comunicações com o servidor");
         }
 
         System.out.println("Aplicação encerrada");
