@@ -103,7 +103,6 @@ public class Client {
                 writeMessage(client, identificacao);
 
                 ByteBuffer readBuffer = readConfirmationMessage(client);
-
                 printReceivedMessage(readBuffer);
 
                 wantsToQuit = quitConfirmation();
